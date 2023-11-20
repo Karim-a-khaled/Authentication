@@ -16,7 +16,7 @@ namespace WebApplication1.Services
             var result = string.Empty;
             if (_httpContextAccessor.HttpContext is not null)
             {
-                result = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Name);
+                result = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.Email);
             }
             return result;
         }
