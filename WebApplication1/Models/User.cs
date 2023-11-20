@@ -11,8 +11,8 @@ namespace WebApplication1.Models
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
-        public string? ResetPasswordToken { get; set; }
+        public string? ResetPasswordOtp { get; set; }
         public string? PhoneNumber { get; set; }
-        public DateTime? ResetPasswordTokenExpiryDate { get; set; }
+        public DateTime? ResetPasswordOtpExpiryDate { get; set; }
     }
 }

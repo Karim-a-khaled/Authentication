@@ -5,7 +5,7 @@ namespace WebApplication1.Models
     public class ResetPassword
     {
         [Required]
-        public string Token { get; set; }
+        public string Otp { get; set; }
         [Required]
         public string Password { get; set; }
     }

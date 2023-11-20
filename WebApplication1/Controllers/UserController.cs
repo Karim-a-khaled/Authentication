@@ -1,11 +1,15 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using WebApplication1.Data;
 using WebApplication1.Models;
 using WebApplication1.Services;
@@ -29,7 +33,7 @@ namespace WebApplication1.Controllers
         }
 
         [HttpGet, Authorize]
-        public ActionResult<string> sayHello()
+        public ActionResult<string> SayHello()
         {
             return Ok("Hello");
         }
@@ -37,7 +41,7 @@ namespace WebApplication1.Controllers
         [HttpPost("register")]
         public ActionResult<User> Register(UserDto request)
         {
-            string passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+            string passwordHash = HashPassword(request.Password);
 
             user.Email = request.Email;
             user.PasswordHash = passwordHash;
@@ -45,87 +49,113 @@ namespace WebApplication1.Controllers
             return Ok(user);
         }
 
-
         [HttpPost("login")]
         public ActionResult<User> Login(UserDto request)
         {
             if (user.Email != request.Email)
             {
-                return BadRequest("Email Or Password Are Incorrect.");
+                return BadRequest("Email or Password is incorrect.");
             }
 
-            if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+            if (!VerifyPassword(request.Password, user.PasswordHash))
             {
-                return BadRequest("Email Or Password Are Incorrect.");
+                return BadRequest("Email or Password is incorrect.");
             }
 
-            string token = CreateToken(user);
+            string token = GenerateJwtToken(user);
 
             return Ok(token);
-        }
-
-        private string CreateToken(User user)
-        {
-            List<Claim> claims = new List<Claim> 
-            {
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, "Admin"),
-                new Claim(ClaimTypes.Role, "User"),
-            };
-
-            var key = _configuration.GetSection("AppSettings:Token").Value!;
-            var encoding = Encoding.UTF8.GetBytes(key);
-            var encodedKey = new SymmetricSecurityKey(encoding);
-
-            var creds = new SigningCredentials(encodedKey, SecurityAlgorithms.HmacSha512Signature);
-
-            var token = new JwtSecurityToken(
-                    claims: claims,
-                    expires: DateTime.Now.AddDays(1),
-                    signingCredentials: creds
-                );
-
-            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
-
-            return jwt;
         }
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(string email)
         {
-            //var user = await _context.Users.FirstOrDefaultAsync(uint => uint.Email == email);
-            if (user is null) { return BadRequest("User Was Not Found");}
-            var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(64));
-            user.ResetPasswordToken = token;
-            user.ResetPasswordTokenExpiryDate = DateTime.Now.AddDays(1); ;
+            // var user = await _context.Users.FirstOrDefaultAsync(uint => uint.Email == email);
+            if (user is null)
+            {
+                return BadRequest("User was not found");
+            }
 
-            return Ok("Here is Your Token : " + token + " You May Now Reset your Password");
+            var otp = GenerateRandomOTP();
+
+            var OtpExpirationInSeconds = int.Parse(_configuration.GetSection("AppSettings:OtpExpirationInSeconds").Value!);
+            var expirationInSeconds = OtpExpirationInSeconds;
+
+            var expirationDate = DateTime.Now.AddSeconds(expirationInSeconds); 
+
+            user.ResetPasswordOtp = otp; 
+            user.ResetPasswordOtpExpiryDate = expirationDate;
+
+            return Ok("You may now reset your password. Here is your OTP: " + otp);
         }
 
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword(ResetPassword request)
         {
-            // here you need to fetch the user from DB
             //var user = await _context Users.FirstOrDefaultAsync(u => u.PasswordResetToken == request.Token);
-            if(user is null || user.ResetPasswordTokenExpiryDate < DateTime.Now)
+            if (user is null || user.ResetPasswordOtpExpiryDate < DateTime.Now)
             {
-                return BadRequest("Invalid Token");
+                return BadRequest("Invalid token");
             }
 
-            CreatePasswordHash(request.Password, out string passwordHash);
+            string passwordHash = HashPassword(request.Password);
             user.PasswordHash = passwordHash;
-            user.ResetPasswordToken = null;
-            user.ResetPasswordTokenExpiryDate = null;
+            user.ResetPasswordOtp = null;
+            user.ResetPasswordOtpExpiryDate = null;
 
-            return Ok("Password Succefully Reseted");
+            return Ok("Password successfully reset");
         }
 
-        public static void CreatePasswordHash(string password, out string passwordHash)
+        private string HashPassword(string password)
         {
             using var sha256 = SHA256.Create();
             byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
             byte[] hashBytes = sha256.ComputeHash(passwordBytes);
-            passwordHash = Convert.ToBase64String(hashBytes);
+            return Convert.ToBase64String(hashBytes);
         }
+
+        private bool VerifyPassword(string password, string passwordHash)
+        {
+            return BCrypt.Net.BCrypt.Verify(password, passwordHash);
+        }
+
+        private string GenerateRandomOTP()
+        {
+            Random random = new Random();
+            int otp = random.Next(1000, 9999);
+            return otp.ToString("D4");
+        }
+
+        private string GenerateJwtToken(User user)
+        {
+            var key = _configuration.GetSection("AppSettings:Token").Value!;
+            var encoding = Encoding.UTF8.GetBytes(key);
+            var encodedKey = new SymmetricSecurityKey(encoding);
+            var creds = new SigningCredentials(encodedKey, SecurityAlgorithms.HmacSha512Signature);
+
+            var TokenExpirationInDays = int.Parse(_configuration.GetSection("AppSettings:TokenExpires").Value!);
+            var expirationInDays = TokenExpirationInDays;
+
+            var expirationDate = DateTime.Now.AddDays(expirationInDays); 
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, "Admin"),
+                new Claim(ClaimTypes.Role, "User")
+            };
+
+
+
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.Now.AddDays(1),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+
     }
 }
