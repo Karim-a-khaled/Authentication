@@ -35,7 +35,7 @@ namespace WebApplication1.Controllers
         [HttpGet, Authorize]
         public ActionResult<string> SayHello()
         {
-            return Ok("Helljo");
+            return Ok("Hell");
         }
 
         [HttpPost("register")]
