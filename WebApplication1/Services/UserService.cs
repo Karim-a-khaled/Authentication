@@ -1,14 +1,17 @@
 ﻿using System.Security.Claims;
+using WebApplication1.Data;
 
 namespace WebApplication1.Services
 {
     public class UserService
     {
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly DataContext _context;
 
-        public UserService(IHttpContextAccessor httpContextAccessor)
+        public UserService(IHttpContextAccessor httpContextAccessor, DataContext context)
         {
             _httpContextAccessor = httpContextAccessor;
+            _context = context;
         }
 
         public string GetMyName()

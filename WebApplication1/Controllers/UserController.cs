@@ -4,8 +4,11 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
+using WebApplication1.Data;
 using WebApplication1.Models;
+using WebApplication1.Services;
 
 namespace WebApplication1.Controllers
 {
@@ -15,11 +18,14 @@ namespace WebApplication1.Controllers
     {
         public static User user = new User();
         private readonly IConfiguration _configuration;
+        private readonly UserService _userService;
+        private readonly DataContext _context;
 
-        public UserController(IConfiguration configuration)
+        public UserController(IConfiguration configuration, UserService userService, DataContext context)
         {
             _configuration = configuration;
-            //_userService = userService; , IUserService userService
+            _userService = userService;
+            _context = context;
         }
 
         [HttpGet, Authorize]
@@ -84,5 +90,42 @@ namespace WebApplication1.Controllers
             return jwt;
         }
 
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(string email)
+        {
+            //var user = await _context.Users.FirstOrDefaultAsync(uint => uint.Email == email);
+            if (user is null) { return BadRequest("User Was Not Found");}
+            var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(64));
+            user.ResetPasswordToken = token;
+            user.ResetPasswordTokenExpiryDate = DateTime.Now.AddDays(1); ;
+
+            return Ok("Here is Your Token : " + token + " You May Now Reset your Password");
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPassword request)
+        {
+            // here you need to fetch the user from DB
+            //var user = await _context Users.FirstOrDefaultAsync(u => u.PasswordResetToken == request.Token);
+            if(user is null || user.ResetPasswordTokenExpiryDate < DateTime.Now)
+            {
+                return BadRequest("Invalid Token");
+            }
+
+            CreatePasswordHash(request.Password, out string passwordHash);
+            user.PasswordHash = passwordHash;
+            user.ResetPasswordToken = null;
+            user.ResetPasswordTokenExpiryDate = null;
+
+            return Ok("Password Succefully Reseted");
+        }
+
+        public static void CreatePasswordHash(string password, out string passwordHash)
+        {
+            using var sha256 = SHA256.Create();
+            byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
+            byte[] hashBytes = sha256.ComputeHash(passwordBytes);
+            passwordHash = Convert.ToBase64String(hashBytes);
+        }
     }
 }
