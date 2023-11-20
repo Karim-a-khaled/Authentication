@@ -35,7 +35,7 @@ namespace WebApplication1.Controllers
         [HttpGet, Authorize]
         public ActionResult<string> SayHello()
         {
-            return Ok("Hell");
+            return Ok("Hello");
         }
 
         [HttpPost("register")]
@@ -64,6 +64,25 @@ namespace WebApplication1.Controllers
 
             string token = GenerateJwtToken(user);
 
+            var jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
+
+            //string userId = jwtToken.Claims.FirstOrDefault(c => c.Type == "userId")?.Value;
+            //string email = jwtToken.Claims.FirstOrDefault(c => c.Type == "email")?.Value;
+
+            string email = string.Empty;
+            int id = 0;
+
+            if (jwtToken.Payload.ContainsKey("email"))
+            {
+                email = jwtToken.Payload["email"].ToString();
+            }
+
+            if (jwtToken.Payload.ContainsKey("nameid"))
+            {
+                int.TryParse(jwtToken.Payload["nameid"].ToString(), out id);
+            }
+            HttpContext.Items.Add("UserId", id);
+            HttpContext.Items.Add("email", email);
             return Ok(token);
         }
 
@@ -81,9 +100,9 @@ namespace WebApplication1.Controllers
             var OtpExpirationInSeconds = int.Parse(_configuration.GetSection("AppSettings:OtpExpirationInSeconds").Value!);
             var expirationInSeconds = OtpExpirationInSeconds;
 
-            var expirationDate = DateTime.Now.AddSeconds(expirationInSeconds); 
+            var expirationDate = DateTime.Now.AddSeconds(expirationInSeconds);
 
-            user.ResetPasswordOtp = otp; 
+            user.ResetPasswordOtp = otp;
             user.ResetPasswordOtpExpiryDate = expirationDate;
 
             return Ok("You may now reset your password. Here is your OTP: " + otp);
@@ -108,10 +127,7 @@ namespace WebApplication1.Controllers
 
         private string HashPassword(string password)
         {
-            using var sha256 = SHA256.Create();
-            byte[] passwordBytes = Encoding.UTF8.GetBytes(password);
-            byte[] hashBytes = sha256.ComputeHash(passwordBytes);
-            return Convert.ToBase64String(hashBytes);
+            return BCrypt.Net.BCrypt.HashPassword(password);
         }
 
         private bool VerifyPassword(string password, string passwordHash)
@@ -136,26 +152,23 @@ namespace WebApplication1.Controllers
             var TokenExpirationInDays = int.Parse(_configuration.GetSection("AppSettings:TokenExpires").Value!);
             var expirationInDays = TokenExpirationInDays;
 
-            var expirationDate = DateTime.Now.AddDays(expirationInDays); 
+            var expirationDate = DateTime.Now.AddDays(expirationInDays);
 
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, "Admin"),
-                new Claim(ClaimTypes.Role, "User")
+                new Claim(JwtRegisteredClaimNames.NameId, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
             };
-
 
 
             var token = new JwtSecurityToken(
                 claims: claims,
-                expires: DateTime.Now.AddDays(1),
+                expires: expirationDate,
                 signingCredentials: creds
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
-
-
     }
 }

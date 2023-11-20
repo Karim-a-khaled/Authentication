@@ -14,5 +14,6 @@ namespace WebApplication1.Models
         public string? ResetPasswordOtp { get; set; }
         public string? PhoneNumber { get; set; }
         public DateTime? ResetPasswordOtpExpiryDate { get; set; }
+        public ICollection<Role> Roles { get; set; }
     }
 }

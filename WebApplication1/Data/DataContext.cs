@@ -8,5 +8,6 @@ namespace WebApplication1.Data
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<User> Roles { get; set; }
     }
 }
