@@ -22,7 +22,7 @@ namespace WebApplication1.Controllers
     {
         public static User user = new User();
         private readonly IConfiguration _configuration;
-        private readonly UserService _userService;
+        //private readonly UserService _userService;
         private readonly DataContext _context;
 
         public UserController(IConfiguration configuration, UserService userService, DataContext context)
