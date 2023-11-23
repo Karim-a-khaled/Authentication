@@ -89,7 +89,6 @@ namespace WebApplication1.Controllers
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword(string email)
         {
-            // var user = await _context.Users.FirstOrDefaultAsync(uint => uint.Email == email);
             if (user is null)
             {
                 return BadRequest("User was not found");
@@ -111,8 +110,7 @@ namespace WebApplication1.Controllers
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword(ResetPassword request)
         {
-            //var user = await _context Users.FirstOrDefaultAsync(u => u.PasswordResetToken == request.Token);
-            if (user is null || user.ResetPasswordOtpExpiryDate < DateTime.Now)
+            if (user is null || user.ResetPasswordOtpExpiryDate < DateTime.Now || request.Otp != user.ResetPasswordOtp)
             {
                 return BadRequest("Invalid token");
             }
