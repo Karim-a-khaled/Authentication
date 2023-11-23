@@ -8,7 +8,9 @@ namespace WebApplication1.Data.Config
     {
         public void Configure(EntityTypeBuilder<Role> builder)
         {
-            builder.HasOne(x => x.User).WithMany(x => x.Roles).HasForeignKey(x => x.UserId);
+            builder.HasOne(x => x.User)
+                .WithMany(x => x.Roles)
+                .HasForeignKey(x => x.UserId);
         }
     }
 }

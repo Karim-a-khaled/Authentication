@@ -7,6 +7,6 @@ namespace WebApplication1.Models
         [Required]
         public string Otp { get; set; }
         [Required]
-        public string Password { get; set; }
+        public string NewPassword { get; set; }
     }
 }

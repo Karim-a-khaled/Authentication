@@ -32,7 +32,7 @@ namespace WebApplication1.Controllers
             _context = context;
         }
 
-        [HttpGet, Authorize]
+        [HttpGet("hello"), Authorize]
         public ActionResult<string> SayHello()
         {
             return Ok("Hello");
@@ -117,7 +117,7 @@ namespace WebApplication1.Controllers
                 return BadRequest("Invalid token");
             }
 
-            string passwordHash = HashPassword(request.Password);
+            string passwordHash = HashPassword(request.NewPassword);
             user.PasswordHash = passwordHash;
             user.ResetPasswordOtp = null;
             user.ResetPasswordOtpExpiryDate = null;
